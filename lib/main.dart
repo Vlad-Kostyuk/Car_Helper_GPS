@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:developer';
-
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
+import 'dart:io';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 const LocationSettings locationSettings = LocationSettings(
@@ -14,68 +15,69 @@ const LocationSettings locationSettings = LocationSettings(
   distanceFilter: 0,
 );
 
+late StreamSubscription<Position> positionStream;
 
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
 
+  final String title = 'Flutter Demo Home Page';
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool button = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GPS'),
+        title: Text(widget.title),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
 
-          ElevatedButton(
-              onPressed: ()  {
-                StreamSubscription<Position> positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-                        (Position? position) {
-                      log(position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}');
-                      log(position == null ? 'Unknown' : position.timestamp.toString());
-                    });
+            ElevatedButton(
+              onPressed: ()  async {
+               await _determinePosition();
+                getUserPositionAndWrites();
               },
-              child: null,
-          )
+              child: const Text('Start'),
+            ),
+
+            ElevatedButton(
+              onPressed: ()  async {
+                getUserPositionAndWritesStop();
+              },
+              child: const Text('Stop'),
+            )
 
           ],
         ),
       ),
+      floatingActionButton: const FloatingActionButton(
+        onPressed: _generateCsvFile,
+        tooltip: 'Increment',
+        child: Icon(Icons.add),
+      ),
     );
   }
 }
-
-
 
 
 Future<Position> _determinePosition() async {
@@ -100,4 +102,67 @@ Future<Position> _determinePosition() async {
         'Location permissions are permanently denied, we cannot request permissions.');
   }
   return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+}
+
+getUserPositionAndWrites() {
+  positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position? position) {
+        log(position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}');
+        log(position == null ? 'Unknown' : position.timestamp.toString());
+      });
+
+}
+
+getUserPositionAndWritesStop() {
+  positionStream.cancel();
+}
+
+void _generateCsvFile() async {
+
+  DateTime now = DateTime.now();
+  String formattedDate1 = DateFormat('HH:mm:ss').format(now);
+
+  List<dynamic> associateList = [
+    {"number": 1, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
+    {"number": 2, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
+    {"number": 3, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
+    {"number": 4, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
+    {"number": 5, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1}
+  ];
+
+  List<List<dynamic>> rows = [];
+
+  List<dynamic> row = [];
+  row.add("number");
+  row.add("latitude");
+  row.add("longitude");
+  row.add("time");
+  rows.add(row);
+  for (int i = 0; i < associateList.length; i++) {
+    List<dynamic> row = [];
+    row.add(associateList[i]["number"] - 1);
+    row.add(associateList[i]["lat"]);
+    row.add(associateList[i]["lon"]);
+    row.add(associateList[i]["time"]);
+    rows.add(row);
+  }
+
+  String csv = const ListToCsvConverter().convert(rows);
+
+
+  String formattedDate = DateFormat('yyyy-MM-dd, HH-mm').format(now);
+  log(formattedDate.toString());
+
+  String file = "/storage/emulated/0/Documents/Flutter";
+
+
+  Directory(file).createSync();
+
+  File f = File('$file/$formattedDate.csv');
+
+
+
+  await f.create();
+
+  f.writeAsString(csv);
 }
