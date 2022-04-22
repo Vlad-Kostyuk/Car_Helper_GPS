@@ -15,6 +15,7 @@ const LocationSettings locationSettings = LocationSettings(
   distanceFilter: 0,
 );
 
+late List<dynamic> associateList = [];
 late StreamSubscription<Position> positionStream;
 
 
@@ -105,42 +106,54 @@ Future<Position> _determinePosition() async {
 }
 
 getUserPositionAndWrites() {
+  int number = 1;
+
+ // var tmp = new Location();
+
   positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
           (Position? position) {
-        log(position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}');
-        log(position == null ? 'Unknown' : position.timestamp.toString());
+      //  log(position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}');
+        //log(position == null ? 'Unknown' : position.timestamp.toString());
+
+        if(position != null) _onAccelerate(position.speed);
+
+        double mpstokmph(double mps) => mps * 18 / 5;
+
+        if(position != null) log(mpstokmph(position.speed).toString());
+
+        if(position != null) associateList.add({"№": number, "lat": position.latitude.toString(), "lon": position.longitude.toString(), "time": DateFormat('HH:mm:ss').format(position.timestamp!)});
+        number++;
       });
 
 }
 
+void _onAccelerate(double _location) {
+  log('-----');
+  log('${_location!= null && _location * 3600 / 1000 > 0 ? (_location * 3600 / 1000).toStringAsFixed(2) : 0} KM/h');
+
+}
+
+
 getUserPositionAndWritesStop() {
   positionStream.cancel();
+  _generateCsvFile();
 }
 
 void _generateCsvFile() async {
 
   DateTime now = DateTime.now();
-  String formattedDate1 = DateFormat('HH:mm:ss').format(now);
-
-  List<dynamic> associateList = [
-    {"number": 1, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
-    {"number": 2, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
-    {"number": 3, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
-    {"number": 4, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1},
-    {"number": 5, "lat": "14.97534313396318", "lon": "101.22998536005622", "time": formattedDate1}
-  ];
 
   List<List<dynamic>> rows = [];
 
   List<dynamic> row = [];
-  row.add("number");
+  row.add("№");
   row.add("latitude");
   row.add("longitude");
   row.add("time");
   rows.add(row);
   for (int i = 0; i < associateList.length; i++) {
     List<dynamic> row = [];
-    row.add(associateList[i]["number"] - 1);
+    row.add(associateList[i]["№"] - 1);
     row.add(associateList[i]["lat"]);
     row.add(associateList[i]["lon"]);
     row.add(associateList[i]["time"]);
@@ -149,18 +162,14 @@ void _generateCsvFile() async {
 
   String csv = const ListToCsvConverter().convert(rows);
 
-
   String formattedDate = DateFormat('yyyy-MM-dd, HH-mm').format(now);
   log(formattedDate.toString());
 
   String file = "/storage/emulated/0/Documents/Flutter";
 
-
   Directory(file).createSync();
 
   File f = File('$file/$formattedDate.csv');
-
-
 
   await f.create();
 
