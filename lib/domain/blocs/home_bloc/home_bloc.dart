@@ -10,18 +10,18 @@ import 'dart:io';
 import 'package:location/location.dart';
 
 bool itFitsPoint = false;
-late StreamSubscription<LocationData> locationSubscription;
+StreamSubscription<LocationData>? _userLocationSubscription;
 late List<dynamic> associateList = [];
 Location location = Location();
 int speedUser = 0;
 late LocationData lastPoint;
 double totalDistance = 0;
 late HomeBloc bloc;
+late bool _serviceEnabled;
+late PermissionStatus _permissionGranted;
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final UserLocationAPI _userLocation;
-
-  StreamSubscription<LocationData>? _userLocationSubscription;
 
   HomeBloc({required UserLocationAPI userLocation}) : _userLocation = userLocation, super(HomeInitial(speedUser, totalDistance)) {
     on<HomeNewDataUserSpeedAndDistanceEvent>(_mapNewDataUserSpeedAndDistance);
@@ -35,9 +35,27 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     return super.close();
   }
 
-  void _mapStartedCurrentLocation(HomeStartedCurrentLocationEvent event,  Emitter<HomeState> emit) {
+  Future<void> _mapStartedCurrentLocation(HomeStartedCurrentLocationEvent event,  Emitter<HomeState> emit) async {
     emit(HomeStartedCurrentLocationState(speedUser, totalDistance));
     _userLocationSubscription?.cancel();
+
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return;
+      }
+    }
+
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      print('Location permissions are denied');
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return;
+      }
+    }
+
     _userLocationSubscription = _userLocation.getLocation().listen((LocationData currentLocation) {
       add(HomeNewDataUserSpeedAndDistanceEvent(currentLocation: currentLocation));
     });
@@ -59,28 +77,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
 void _determinePosition(LocationData currentLocation) async {
   int number = 1;
-  bool _serviceEnabled;
-  PermissionStatus _permissionGranted;
   double distanceLastPoint = 0.0;
-  location.enableBackgroundMode(enable: true);
-  location.changeSettings(distanceFilter: 0, accuracy: LocationAccuracy.high);
-
-  _serviceEnabled = await location.serviceEnabled();
-  if (!_serviceEnabled) {
-    _serviceEnabled = await location.requestService();
-    if (!_serviceEnabled) {
-      return;
-    }
-  }
-
-  _permissionGranted = await location.hasPermission();
-  if (_permissionGranted == PermissionStatus.denied) {
-    print('Location permissions are denied');
-    _permissionGranted = await location.requestPermission();
-    if (_permissionGranted != PermissionStatus.granted) {
-      return;
-    }
-  }
 
 
     if(itFitsPoint == false) {

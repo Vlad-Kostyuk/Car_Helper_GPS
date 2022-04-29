@@ -8,6 +8,8 @@ class UserLocationAPI {
   UserLocationAPI();
 
   Stream<LocationData> getLocation() {
+    location.enableBackgroundMode(enable: true);
+    location.changeSettings(distanceFilter: 0, accuracy: LocationAccuracy.high);
     return location.onLocationChanged;
   }
 }
