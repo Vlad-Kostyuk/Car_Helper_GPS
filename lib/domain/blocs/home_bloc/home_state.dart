@@ -1,26 +1,35 @@
 import 'package:equatable/equatable.dart';
 
 abstract class HomeState extends Equatable {
-  const HomeState();
+  final int speed;
+  final double totalDistance;
+
+  const HomeState(this.speed, this.totalDistance);
 
   @override
-  List<Object> get props => [];
+  List<Object> get props => [speed, totalDistance];
 }
 
 class HomeInitial extends HomeState {
 
-  const HomeInitial();
+  const HomeInitial(int speed, double totalDistance) : super(speed, totalDistance);
 
-  @override
-  List<Object> get props => [];
+}
+
+class HomeStartedCurrentLocationState extends HomeState {
+
+  const HomeStartedCurrentLocationState(int speed, double totalDistance) : super(speed, totalDistance);
+
 }
 
 class HomeUpdateUserSpeedAndDistanceState extends HomeState {
-  final int speed;
-  final double totalDistance;
 
-  const HomeUpdateUserSpeedAndDistanceState({required this.speed, required this.totalDistance});
+  const HomeUpdateUserSpeedAndDistanceState(int speed, double totalDistance) : super(speed, totalDistance);
 
-  @override
-  List<Object> get props => [];
+}
+
+class HomeResumedCurrentLocationState extends HomeState {
+
+  const HomeResumedCurrentLocationState(int speed, double totalDistance) : super(speed, totalDistance);
+
 }
